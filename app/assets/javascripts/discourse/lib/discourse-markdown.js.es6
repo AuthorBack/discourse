@@ -1,4 +1,5 @@
 import guid from 'discourse/lib/guid';
+import { default as WhiteLister, whiteListFeature } from 'discourse/lib/white-lister';
 
 var parser = window.BetterMarkdown,
     MD = parser.Markdown,
@@ -162,6 +163,8 @@ class DialectHelper {
   **/
   replaceBlock(args) {
     function blockFunc(block, next) {
+      if (args.feature && !currentOpts.features[args.feature]) { return; }
+
       const linebreaks = currentOpts.traditionalMarkdownLinebreaks;
       if (linebreaks && args.skipIfTradtionalLinebreaks) { return; }
 
@@ -310,7 +313,13 @@ class DialectHelper {
       if (entry.indexOf('discourse-markdown') !== -1) {
         const module = require(entry);
         if (module && module.setup) {
+
+          const featureName = entry.split('/').reverse()[0];
+          helper.whiteList = info => whiteListFeature(featureName, info);
+
           module.setup(this);
+
+          helper.whiteList = undefined;
         }
       }
     });
@@ -338,8 +347,10 @@ export function cook(raw, opts) {
 
   preProcessors.forEach(p => raw = p(raw, hoister));
 
+  const whiteLister = new WhiteLister(opts.features);
+
   const tree = parser.toHTMLTree(raw, 'Discourse');
-  let result = opts.sanitizer(parser.renderJsonML(parseTree(tree, opts)));
+  let result = opts.sanitizer(parser.renderJsonML(parseTree(tree, opts)), whiteLister);
 
   // If we hoisted out anything, put it back
   const keys = Object.keys(hoisted);

@@ -5,7 +5,7 @@ export default DiscourseRoute.extend({
 
   // this route requires the sanitizer
   beforeModel() {
-    loadScript('defer/html-sanitizer-bundle');
+    loadScript('defer/xss.min');
   },
 
   model() {

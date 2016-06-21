@@ -1,7 +1,6 @@
 const _validTags = {};
 const _validClasses = {};
 const _validIframes = [];
-let _decoratedCaja = false;
 
 function validateAttribute(tagName, attribName, value) {
   var tag = _validTags[tagName];
@@ -51,51 +50,51 @@ function anchorRegexp(regex) {
   return new RegExp("^" + regex.source + "$", flags);
 }
 
-export function urlAllowed(uri, effect, ltype, hints) {
-  var url = typeof(uri) === "string" ? uri : uri.toString();
+const xss = window.filterXSS;
 
+function attr(name, value) {
+  return `${name}="${xss.escapeAttrValue(value)}"`;
+}
+
+export function hrefAllowed(href) {
   // escape single quotes
-  url = url.replace(/'/g, "%27");
-
-  // whitelist some iframe only
-  if (hints && hints.XML_TAG === "iframe" && hints.XML_ATTR === "src") {
-    for (var i = 0, length = _validIframes.length; i < length; i++) {
-      if(_validIframes[i].test(url)) { return url; }
-    }
-    return;
-  }
+  href = href.replace(/'/g, "%27");
 
   // absolute urls
-  if(/^(https?:)?\/\/[\w\.\-]+/i.test(url)) { return url; }
+  if (/^(https?:)?\/\/[\w\.\-]+/i.test(href)) { return href; }
   // relative urls
-  if(/^\/[\w\.\-]+/i.test(url)) { return url; }
+  if (/^\/[\w\.\-]+/i.test(href)) { return href; }
   // anchors
-  if(/^#[\w\.\-]+/i.test(url)) { return url; }
+  if (/^#[\w\.\-]+/i.test(href)) { return href; }
   // mailtos
-  if(/^mailto:[\w\.\-@]+/i.test(url)) { return url; }
-};
+  if (/^mailto:[\w\.\-@]+/i.test(href)) { return href; }
+}
 
-export function sanitize(text) {
-  if (!window.html_sanitize || !text) return "";
+export function sanitize(text, whiteLister) {
+  if (!window.filterXSS || !text) return "";
 
   // Allow things like <3 and <_<
   text = text.replace(/<([^A-Za-z\/\!]|$)/g, "&lt;$1");
 
-  // The first time, let's add some more whitelisted tags
-  if (!_decoratedCaja) {
-
-    // Add anything whitelisted to the list of elements if it's not in there already.
-    var elements = window.html4.ELEMENTS;
-    Object.keys(_validTags).forEach(function(t) {
-      if (!elements[t]) {
-        elements[t] = 0;
+  const whiteList = whiteLister.getWhiteList();
+  const result = xss(text, {
+    whiteList: whiteList.tagList,
+    stripIgnoreTagBody: '*',
+    onIgnoreTagAttr(tag, name, value) {
+      const forTag = whiteList.attrList[tag];
+      if (forTag) {
+        const forAttr = forTag[name];
+        if ((forAttr && (forAttr.indexOf('*') !== -1 || forAttr.indexOf(value) !== -1)) ||
+            ((tag === 'a' && name === 'href') && hrefAllowed(value)) ||
+            (tag === 'img' && name === 'src' && /^data:image.*$/i.test(value) || hrefAllowed(value)) ||
+            (tag === 'iframe' && name === 'src' && _validIframes.some(i => i.test(value)))) {
+          return attr(name, value);
+        }
       }
-    });
+    }
+  });
 
-    _decoratedCaja = true;
-  }
-
-  return window.html_sanitize(text, urlAllowed, validateAttribute);
+  return result.replace(/\[removed\]/g, '').replace(/ \/>/g, '>');
 };
 
 export function whiteListTag(tagName, attribName, value) {
@@ -116,34 +115,11 @@ export function whiteListIframe(regexp) {
   _validIframes.push(regexp);
 }
 
-whiteListTag('a', 'class', 'attachment');
-whiteListTag('a', 'class', 'onebox');
-whiteListTag('a', 'class', 'mention');
-whiteListTag('a', 'class', 'mention-group');
-whiteListTag('a', 'class', 'hashtag');
-
-whiteListTag('a', 'target', '_blank');
-whiteListTag('a', 'rel', 'nofollow');
-whiteListTag('a', 'data-bbcode');
 whiteListTag('a', 'name');
 
-whiteListTag('img', 'src', /^data:image.*$/i);
-
-whiteListTag('div', 'class', 'title');
-whiteListTag('div', 'class', 'quote-controls');
-
-whiteListTag('span', 'class', 'mention');
-whiteListTag('span', 'class', 'hashtag');
-whiteListTag('aside', 'class', 'quote');
 whiteListTag('aside', 'data-*');
 
-whiteListTag('span', 'bbcode-b');
-whiteListTag('span', 'bbcode-i');
-whiteListTag('span', 'bbcode-u');
-whiteListTag('span', 'bbcode-s');
-
 // used for pinned topics
-whiteListTag('span', 'class', 'excerpt');
 whiteListIframe(/^(https?:)?\/\/www\.google\.com\/maps\/embed\?.+/i);
 whiteListIframe(/^(https?:)?\/\/www\.openstreetmap\.org\/export\/embed.html\?.+/i);
 

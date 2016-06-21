@@ -19,6 +19,7 @@ export default class {
                        lookupAvatar: opts.lookupAvatar,
                        mentionLookup: opts.mentionLookup,
                        categoryHashtagLookup: opts.categoryHashtagLookup,
+                       features: opts.features || {},
                        sanitizer };
 
     const result = cook(raw, cookArgs);

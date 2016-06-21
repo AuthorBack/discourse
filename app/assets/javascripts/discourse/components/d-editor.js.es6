@@ -214,7 +214,7 @@ export default Ember.Component.extend({
     this._applyEmojiAutocomplete(container, $editorInput);
     this._applyCategoryHashtagAutocomplete(container, $editorInput);
 
-    loadScript('defer/html-sanitizer-bundle').then(() => this.set('ready', true));
+    loadScript('defer/xss.min').then(() => this.set('ready', true));
 
     const mouseTrap = Mousetrap(this.$('.d-editor-input')[0]);
 

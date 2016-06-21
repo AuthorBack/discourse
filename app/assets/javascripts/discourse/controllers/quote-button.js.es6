@@ -6,7 +6,7 @@ export default Ember.Controller.extend({
   needs: ['topic', 'composer'],
 
   _loadSanitizer: function() {
-    loadScript('defer/html-sanitizer-bundle');
+    loadScript('defer/xss.min');
   }.on('init'),
 
   @computed('buffer', 'postId')

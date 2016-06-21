@@ -660,3 +660,12 @@ test("quotes with trailing formatting", function() {
         "<div class=\"quote-controls\"></div>EvilTrout:</div><blockquote><p>hello</p></blockquote></aside>\n\n<p><em>Test</em></p>",
         "it allows trailing formatting");
 });
+
+test("enable/disable features", () => {
+  const table = `<table><tr><th>hello</th></tr><tr><td>world</td></tr></table>`;
+  const hasTable = new PrettyText({ features: {table: true}, sanitize: true}).cook(table);
+  equal(hasTable, `<table class="md-table"><tr><th>hello</th></tr><tr><td>world</td></tr></table>`);
+
+  const noTable = new PrettyText({ features: { table: false }, sanitize: true}).cook(table);
+  equal(noTable, ``, 'tables are stripped when disabled');
+});
